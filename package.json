@@ -1,5 +1,5 @@
 {
-  "name": "roughjs",
+  "name": "@node-projects/roughjs",
   "version": "4.5.2",
   "description": "Create graphics using HTML Canvas or SVG with a hand-drawn, sketchy, appearance.",
   "main": "bundled/rough.cjs.js",
