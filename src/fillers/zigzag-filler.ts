@@ -1,7 +1,7 @@
-import { HachureFiller } from './hachure-filler';
-import { polygonHachureLines } from './scan-line-hachure';
-import { ResolvedOptions, OpSet } from '../core';
-import { Point, Line, lineLength } from '../geometry';
+import { HachureFiller } from './hachure-filler.js';
+import { polygonHachureLines } from './scan-line-hachure.js';
+import { ResolvedOptions, OpSet } from '../core.js';
+import { Point, Line, lineLength } from '../geometry.js';
 
 export class ZigZagFiller extends HachureFiller {
   fillPolygons(polygonList: Point[][], o: ResolvedOptions): OpSet {

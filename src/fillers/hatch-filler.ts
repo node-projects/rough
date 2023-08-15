@@ -1,6 +1,6 @@
-import { HachureFiller } from './hachure-filler';
-import { ResolvedOptions, OpSet } from '../core';
-import { Point } from '../geometry';
+import { HachureFiller } from './hachure-filler.js';
+import { ResolvedOptions, OpSet } from '../core.js';
+import { Point } from '../geometry.js';
 
 export class HatchFiller extends HachureFiller {
   fillPolygons(polygonList: Point[][], o: ResolvedOptions): OpSet {

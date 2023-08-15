@@ -1,5 +1,5 @@
-import { ResolvedOptions, OpSet, Op } from '../core';
-import { Point } from '../geometry';
+import { ResolvedOptions, OpSet, Op } from '../core.js';
+import { Point } from '../geometry.js';
 
 export interface PatternFiller {
   fillPolygons(polygonList: Point[][], o: ResolvedOptions): OpSet;
