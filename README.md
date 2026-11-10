@@ -159,6 +159,10 @@ using a semantic version tag such as `v4.6.7` or `4.6.7`. The workflow builds
 and publishes the same archive to npm. Prereleases (including version tags such
 as `v4.6.7-beta.1`) use the `next` npm dist-tag; stable releases use `latest`.
 The version change happens only in the workflow checkout.
+To retry a failed release, run **Publish release** manually from the Actions tab
+on `master` and enter the existing release tag. This uses the corrected workflow
+while building the code from that release tag. npm versions already published
+cannot be published again.
 
 Publishing uses npm trusted publishing (OIDC), with no `NPM_TOKEN` secret.
 To configure it again, log in with `npm login` and use a current npm CLI:

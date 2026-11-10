@@ -3,13 +3,19 @@ name: Publish release
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      release-tag:
+        description: Existing published release tag to retry
+        required: true
+        type: string
 
 permissions:
   contents: write
   id-token: write
 
 concurrency:
-  group: release-${{ github.event.release.tag_name }}
+  group: release-${{ inputs.release-tag || github.event.release.tag_name }}
   cancel-in-progress: false
 
 jobs:
@@ -17,9 +23,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - name: Resolve published release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.release-tag || github.event.release.tag_name }}
+        run: |
+          gh release view "$RELEASE_TAG" --json tagName,isPrerelease,isDraft > "$RUNNER_TEMP/release.json"
+          node <<'JS'
+          const fs = require('node:fs');
+          const release = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/release.json', 'utf8'));
+          if (release.isDraft) throw new Error('Release must be published');
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `tag=${release.tagName}\nprerelease=${release.isPrerelease}\n`);
+          JS
+
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ steps.release.outputs.tag }}
           persist-credentials: false
 
       - uses: actions/setup-node@v6
@@ -36,8 +57,8 @@ jobs:
       - name: Set package version from release tag
         id: version
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-          PRERELEASE: ${{ github.event.release.prerelease }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          PRERELEASE: ${{ steps.release.outputs.prerelease }}
         run: |
           VERSION="${RELEASE_TAG#v}"
           npm version "$VERSION" --no-git-tag-version --allow-same-version --ignore-scripts
@@ -56,14 +77,24 @@ jobs:
         id: pack
         run: |
           npm pack --json > "$RUNNER_TEMP/npm-pack.json"
-          FILENAME="$(node -p 'require(process.env.RUNNER_TEMP + "/npm-pack.json")[0].filename')"
-          echo "filename=$FILENAME" >> "$GITHUB_OUTPUT"
+          node <<'JS'
+          const fs = require('node:fs');
+          const result = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/npm-pack.json', 'utf8'));
+          // npm 11 returns an array; npm 12 keys results by package name.
+          const packages = Object.values(result);
+          if (packages.length !== 1 || !packages[0].filename) {
+            throw new Error('Expected exactly one npm package archive');
+          }
+          const filename = packages[0].filename;
+          fs.accessSync(filename);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `filename=${filename}\n`);
+          JS
 
       - name: Upload package to GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
           PACKAGE_FILE: ${{ steps.pack.outputs.filename }}
         run: gh release upload "$RELEASE_TAG" "$PACKAGE_FILE" --clobber
 
