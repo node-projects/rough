@@ -1,5 +1,10 @@
 # Rough.js
 
+[![npm version](https://img.shields.io/npm/v/%40node-projects%2Froughjs)](https://www.npmjs.com/package/@node-projects/roughjs)
+[![npm downloads](https://img.shields.io/npm/dm/%40node-projects%2Froughjs)](https://www.npmjs.com/package/@node-projects/roughjs)
+[![Publish release](https://github.com/node-projects/rough/actions/workflows/release.yml/badge.svg)](https://github.com/node-projects/rough/actions/workflows/release.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 <b>Rough.js</b> is a small (\<9 kB) graphics library that lets you draw in a _sketchy_, _hand-drawn-like_, style.
 The library defines primitives to draw lines, curves, arcs, polygons, circles, and ellipses. It also supports drawing [SVG paths](https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Paths).
 
