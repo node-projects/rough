@@ -7,13 +7,13 @@
   "browser": "bundled/rough.js",
   "types": "bin/rough.d.ts",
   "scripts": {
-    "build": "rm -rf bin && tsc && rollup -c",
+    "build": "rm -rf bin && tsc && node scripts/build.cjs",
     "lint": "eslint --ext ts src",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pshihn/rough.git"
+    "url": "git+https://github.com/node-projects/rough.git"
   },
   "keywords": [
     "canvas",

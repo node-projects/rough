@@ -7,3 +7,5 @@ tslint.json
 rollup.config.js
 .gitignore
 visual-tests
+scripts
+.github

@@ -1,0 +1,74 @@
+name: Publish release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Update npm for trusted publishing
+        run: npm install --global npm@12.2.2
+
+      - run: npm ci
+
+      - name: Set package version from release tag
+        id: version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          VERSION="${RELEASE_TAG#v}"
+          npm version "$VERSION" --no-git-tag-version --allow-same-version --ignore-scripts
+          ACTUAL_VERSION="$(node -p 'require("./package.json").version')"
+          test "$ACTUAL_VERSION" = "$VERSION"
+          if [[ "$PRERELEASE" == "true" || "$VERSION" == *-* ]]; then
+            echo "dist-tag=next" >> "$GITHUB_OUTPUT"
+          else
+            echo "dist-tag=latest" >> "$GITHUB_OUTPUT"
+          fi
+
+      - run: npm run lint
+      - run: npm run build
+
+      - name: Pack npm artifact
+        id: pack
+        run: |
+          npm pack --json > "$RUNNER_TEMP/npm-pack.json"
+          FILENAME="$(node -p 'require(process.env.RUNNER_TEMP + "/npm-pack.json")[0].filename')"
+          echo "filename=$FILENAME" >> "$GITHUB_OUTPUT"
+
+      - name: Upload package to GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          PACKAGE_FILE: ${{ steps.pack.outputs.filename }}
+        run: gh release upload "$RELEASE_TAG" "$PACKAGE_FILE" --clobber
+
+      - name: Publish package to npm
+        env:
+          PACKAGE_FILE: ${{ steps.pack.outputs.filename }}
+          DIST_TAG: ${{ steps.version.outputs.dist-tag }}
+        run: npm publish "$PACKAGE_FILE" --access public --provenance --tag "$DIST_TAG"

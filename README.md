@@ -151,5 +151,21 @@ Support this project with your organization. Your logo will show up here with a 
 <a href="https://opencollective.com/rough/organization/8/website"><img src="https://opencollective.com/rough/organization/8/avatar.svg"></a>
 <a href="https://opencollective.com/rough/organization/9/website"><img src="https://opencollective.com/rough/organization/9/avatar.svg"></a>
 
+## Publishing this fork
+
+Publish a GitHub release from a commit containing `.github/workflows/release.yml`,
+using a semantic version tag such as `v4.6.7` or `4.6.7`. The workflow builds
+`@node-projects/roughjs` with that version, attaches the npm `.tgz` to the release,
+and publishes the same archive to npm. Prereleases (including version tags such
+as `v4.6.7-beta.1`) use the `next` npm dist-tag; stable releases use `latest`.
+The version change happens only in the workflow checkout.
+
+Publishing uses npm trusted publishing (OIDC), with no `NPM_TOKEN` secret.
+To configure it again, log in with `npm login` and use a current npm CLI:
+
+```sh
+npm trust github @node-projects/roughjs --repo node-projects/rough --file release.yml --allow-publish --yes
+```
+
 ## License
 [MIT License](https://github.com/pshihn/rough/blob/master/LICENSE) (c) [Preet Shihn](https://twitter.com/preetster)
