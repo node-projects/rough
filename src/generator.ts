@@ -1,4 +1,4 @@
-import { Config, Options, Drawable, OpSet, ResolvedOptions, PathInfo } from './core.js';
+import { Config, Options, Drawable, OpSet, Op, ResolvedOptions, PathInfo } from './core.js';
 import { Point } from './geometry.js';
 import { line, solidFillPolygon, patternFillPolygons, rectangle, ellipseWithParams, generateEllipseParams, linearPath, arc, patternFillArc, curve, svgPath } from './renderer.js';
 import { randomSeed } from './math.js';
@@ -31,6 +31,7 @@ export class RoughGenerator {
     disableMultiStroke: false,
     disableMultiStrokeFill: false,
     preserveVertices: false,
+    fillShapeRoughnessGain: 0.8,
   };
 
   constructor(config?: Config) {
@@ -127,19 +128,41 @@ export class RoughGenerator {
     return this._d('arc', paths, o);
   }
 
-  curve(points: Point[], options?: Options): Drawable {
+  curve(points: Point[] | Point[][], options?: Options): Drawable {
     const o = this._o(options);
     const paths: OpSet[] = [];
     const outline = curve(points, o);
-    if (o.fill && o.fill !== NOS && points.length >= 3) {
-      const bcurve = curveToBezier(points);
-      const polyPoints = pointsOnBezierCurves(bcurve, 10, (1 + o.roughness) / 2);
+    if (o.fill && o.fill !== NOS) {
       if (o.fillStyle === 'solid') {
-        //@ts-ignore
-        paths.push(solidFillPolygon([polyPoints], o));
+        const fillShape = curve(points, { ...o, disableMultiStroke: true, roughness: o.roughness ? (o.roughness + o.fillShapeRoughnessGain) : 0 });
+        paths.push({
+          type: 'fillPath',
+          ops: this._mergedShape(fillShape.ops),
+        });
       } else {
-        //@ts-ignore
-        paths.push(patternFillPolygons([polyPoints], o));
+        const polyPoints: Point[] = [];
+        const inputPoints = points;
+        if (inputPoints.length) {
+          const p1 = inputPoints[0];
+          const pointsList = (typeof p1[0] === 'number') ? [inputPoints as Point[]] : inputPoints as Point[][];
+          for (const points of pointsList) {
+            if (points.length < 3) {
+              polyPoints.push(...points);
+            } else if (points.length === 3) {
+              polyPoints.push(...pointsOnBezierCurves(curveToBezier([
+                points[0],
+                points[0],
+                points[1],
+                points[2],
+              ]), 10, (1 + o.roughness) / 2).map(([x, y]): Point => [x, y]));
+            } else {
+              polyPoints.push(...pointsOnBezierCurves(curveToBezier(points), 10, (1 + o.roughness) / 2).map(([x, y]): Point => [x, y]));
+            }
+          }
+        }
+        if (polyPoints.length) {
+          paths.push(patternFillPolygons([polyPoints], o));
+        }
       }
     }
     if (o.stroke !== NOS) {
@@ -176,12 +199,21 @@ export class RoughGenerator {
     const hasFill = o.fill && o.fill !== 'transparent' && o.fill !== NOS;
     const hasStroke = o.stroke !== NOS;
     const simplified = !!(o.simplification && (o.simplification < 1));
-    const distance = simplified ? (4 - 4 * (o.simplification!)) : ((1 + o.roughness) / 2);
+    const distance = simplified ? (4 - 4 * (o.simplification || 1)) : ((1 + o.roughness) / 2);
     const sets = pointsOnPath(d, 1, distance);
+    const shape = svgPath(d, o);
 
     if (hasFill) {
       if (o.fillStyle === 'solid') {
-        paths.push(solidFillPolygon(sets, o));
+        if (sets.length === 1) {
+          const fillShape = svgPath(d, { ...o, disableMultiStroke: true, roughness: o.roughness ? (o.roughness + o.fillShapeRoughnessGain) : 0 });
+          paths.push({
+            type: 'fillPath',
+            ops: this._mergedShape(fillShape.ops),
+          });
+        } else {
+          paths.push(solidFillPolygon(sets, o));
+        }
       } else {
         paths.push(patternFillPolygons(sets, o));
       }
@@ -192,7 +224,7 @@ export class RoughGenerator {
           paths.push(linearPath(set, false, o));
         });
       } else {
-        paths.push(svgPath(d, o));
+        paths.push(shape);
       }
     }
 
@@ -263,5 +295,17 @@ export class RoughGenerator {
       strokeWidth: fweight,
       fill: NOS,
     };
+  }
+
+  private _mergedShape(input: Op[]): Op[] {
+    return input.filter((d, i) => {
+      if (i === 0) {
+        return true;
+      }
+      if (d.op === 'move') {
+        return false;
+      }
+      return true;
+    });
   }
 }
